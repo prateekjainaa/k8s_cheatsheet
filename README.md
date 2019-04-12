@@ -11,6 +11,10 @@ Now, we can also use k inplace of kubectl.
   
    k run mynginx --image=nginx --generator=run-pod/v1 -n myNS
    
+   -- better way
+   
+    k create deployment mydep2 --image=nginx -n myNS
+   
 3. To list pods in myNS namespace
   
    k get po -o wide -n myNS
@@ -91,4 +95,75 @@ Now, we can also use k inplace of kubectl.
     k delete po --all # will delete all pods in my current ns.
     k delete all --all # will delete everything (except some like secrets) inside current ns.
     
-17. 
+## ---------------------------------------
+17. livenessProbe - httpGet, exec, tcpSocket
+    Exit code is (128 + x) for example 137 = (128 + 9). 9 is ``sigKill`` signal.
+    When a container is killed, a new container is created. same container is not restarted.
+    Always use ``initialDelaySeconds`` to account in App's startup time.
+    
+    keep probes light for example dont spawn a new jvm while checking java based app.
+    
+    Don't specify selector in rc yaml, k8s will extract it from template and will keep file simple.
+    
+    to turn off network: ``sudo ifconfig eth0 down``
+    if a node becomes unreachable in network then pods on it are marked with ``UNKNOWN`` status.
+    
+    By updating pod's label it can be removed or added to scope of rc.
+    
+    k edit rc mynginx -n myNS
+    # delete a rc but keep its pods running
+    
+    k delete rc mynginx --cascade=false
+    
+    rs has both matchLabels and matchExpressions in selector.
+    
+ 18. DaemonSet to run 1 pod per node
+ 
+    Note: To run DaemonSet on selective nodes, use nodeSelector in pod template  
+    
+19. Job - Where you want to run a task that terminates after completing its work.
+
+    k create job myjob --image=busybox -n myNS -- ls
+    
+    Running multiple pod instances and running them in sequence or in parallel is controlled by ``completions`` and ``parallelism`` in job spec. A job can be scaled like rs (it increases parallel). Job's time can be limited by activeDeadLineSeconds. 
+    
+ 20. CronJob is similar to job with spec.schedule and startedDeadlineSeconds properties.
+ 
+ 21. Service -> sessionAffinity: clientIP | None
+ 
+     Pods can got IP and port of services by looking up environment variables. for example, 
+     # MYNGINX_SERVICE_HOST=10.22.33.201
+     
+     Whether the pod uses internal DNS service is configurable by ``dnsPolicy`` in pod.spec
+     
+     Service also gets a FQDN - <service_name>.<namespace>.svc.cluster.local
+ 
+     Pod also stores/caches DNS information in /etc/resolv.conf
+     
+     ## You can't ping service IP
+     
+     Service has endpoints. You can point a service to external service like DB - 
+       a. Create a service w/o pod selector.
+       b. i. By manually creating EndPoints (its name should exactly match with service name), or
+          ii. Set the ``type`` field of service to ExternalName like,
+          
+            kind: Service
+            spec:
+              type: ExternalName
+              externalName: someapi.outside.com
+              
+      c. Service can be exposed to external clients via NodePort, LoadBalancer and Ingress.             
+          You can use ``externalTrafficPolicy`` field of service to avoid additional network hops but it might result in hanged requests to nodes which dont have those pods.
+          By Setting clusterIP to ``None``, we can create a headless service.
+          
+      d. Add ``service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"`` annotation to service for listing all pods added to service irrespective of their status.
+      
+      e. If you can’t even access your app through the pod’s IP, make sure your app isn’t only binding to localhost.
+      
+      
+  22.       
+          
+             
+  
+ 
+
