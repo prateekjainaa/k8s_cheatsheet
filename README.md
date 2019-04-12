@@ -111,7 +111,7 @@ Now, we can also use k inplace of kubectl.
     By updating pod's label it can be removed or added to scope of rc.
     
     k edit rc mynginx -n myNS
-    # delete a rc but keep its pods running
+     delete a rc but keep its pods running
     
     k delete rc mynginx --cascade=false
     
@@ -161,8 +161,89 @@ Now, we can also use k inplace of kubectl.
       e. If you can’t even access your app through the pod’s IP, make sure your app isn’t only binding to localhost.
       
       
-  22.       
-          
+  22.  Volumes: 
+       At pod level
+       
+         volumes:
+           - name: myhtmlDir
+             emptyDir/gitRepo/...
+           
+       At container level
+       
+         volumeMounts:
+           - name: myhtmlDir
+             mountPath: /var/www/html
+             readOnly: true
+      
+      Note: use emptyDir.medium as Memory to stop writing anything to disk.
+      
+  Use ``hostPath`` volume to share/access filesystem of node in pod.
+  
+  To use persistent storage for DB like mysql, mongodb etc. use gcePersistentDisk/awsElasticBlockStore/azureDisk or nfs.
+  
+  ``configMap, secret, downwardAPI``—Special types of volumes used to expose certain Kubernetes resources and cluster information to the pod.
+  
+  But this kind of information should be decoupled from pod definition via PVC and PV.
+  
+  While creating PV, admin needs to tell its capacity and whether it can be read by or written by single or multiple pods. Also, specify what to do when PV is released.
+  
+``kind: PersistentVolume
+  metadata:
+    name: mongodb-pv
+  spec:
+    capacity:
+      storage: 1Gi
+      accessModes:
+      - ReadWriteOnce
+      - ReadOnlyMany
+      persistentVolumeReclaimPolicy: Retain
+      gcePersistentDisk:
+        pdName: mongodb
+        fsType: ext4         
+  ``
+  
+  PV are not bound to namespace. They are cluster level resources. But PVC are namespace scoped and can only be used by pods of same namespace.
+  
+  Now, create PVCs like 
+
+````
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongodb-pvc 
+spec:
+  resources:
+    requests:
+      storage: 1Gi
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: ""
+  ````
+  
+This can be reffered into Pod as,
+
+````
+  volumes:
+  - name: mongodb-data
+    persistentVolumeClaim:
+      claimName: mongodb-pvc
+````
+
+PV status could be Available/Bound/Pending.
+
+ the only way to manually recycle the PersistentVolume to make it available again is to delete and recreate the PersistentVolume         resource.
+
+# Reclaiming PersistentVolumes automatically
+Two other possible reclaim policies exist: Recycle and Delete. The first one deletes the volume’s contents and makes the volume available to be claimed again. This way, the PersistentVolume can be reused multiple times by different PersistentVolumeClaims and different pods. The Delete policy, on the other hand, deletes the underlying storage. 
+
+# DYNAMIC PROVISIONING OF PERSISTENTVOLUMES
+
+The cluster admin, instead of creating PersistentVolumes, can deploy a PersistentVolume provisioner and define one or more         StorageClass objects to let users choose what type of PersistentVolume they want. The users can refer to the StorageClass in their PersistentVolumeClaims and the provisioner will take that into account when provisioning the persistent storage.
+
+``StorageClass is not namespaced.``
+
+# Specifying an empty string as the storage class name ensures the PVC binds to a pre-provisioned PV instead of dynamically provisioning a new one.
+
              
   
  
