@@ -244,7 +244,94 @@ The cluster admin, instead of creating PersistentVolumes, can deploy a Persisten
 
 # Specifying an empty string as the storage class name ensures the PVC binds to a pre-provisioned PV instead of dynamically provisioning a new one.
 
-             
-  
- 
+23. ConfigMaps and Secrets
 
+ Regardless if you’re using a ConfigMap to store configuration data or not, you can configure your apps by                                    Passing command-line arguments to containers
+     Setting custom environment variables for each container
+     Mounting configuration files into containers through a special type of volume
+  
+In a Dockerfile, two instructions define the two parts:
+
+  ENTRYPOINT defines the executable invoked when the container is started.
+  CMD specifies the arguments that get passed to the ENTRYPOINT.
+
+Overriding the command and arguments in Kubernetes:
+````
+kind: Pod
+spec:
+  containers:
+  - image: some/image
+    command: ["/bin/command"]
+    args: ["arg1", "arg2", "arg3"]
+````
+ 
+ Specifying environment variables in a container definition:
+ ````
+ containers:
+ - image: myimage
+   env:                            
+   - name: INTERVAL                
+     value: "30"                   
+   name: html-generator
+````
+
+Referring to other environment variables in a variable’s value
+````
+env:
+- name: FIRST_VAR
+  value: "foo"
+- name: SECOND_VAR
+  value: "$(FIRST_VAR)bar"
+  ````
+  
+  To reuse the same pod definition in multiple environments, it makes sense to decouple the configuration from the pod descriptor.
+  
+  ``kubectl create configmap fortune-config --from-literal=sleep-interval=25 --from-literal=bar=baz``
+  
+  ``kubectl create configmap my-config --from-file=config-file.conf``
+  
+  Now this can be used in pod to inject values
+  
+  ````
+  spec:
+  containers:
+  - image: myniginx:env
+    env:                             
+    - name: INTERVAL                 
+      valueFrom:                     
+        configMapKeyRef:             
+          name: my-config       
+          key: sleep-interval
+  ````
+  
+  You can also mark a reference to a ConfigMap as optional (by setting configMapKeyRef.optional: true). In that case, the container starts even if the ConfigMap doesn’t exist.
+  
+  You can expose all keys inside configMap as environment variables by using the envFrom attribute, instead of env the way
+  ````
+  spec:
+  containers:
+  - image: some-image
+    envFrom:                      
+    - prefix: CONFIG_             
+      configMapRef:               
+        name: my-config      
+   ````
+   
+   Passing a ConfigMap entry as a command-line argument
+  ```` 
+  spec:
+  containers:
+  - image: mynginx
+    env:                               
+    - name: INTERVAL                   
+      valueFrom:                       
+        configMapKeyRef:               
+          name: my-config         
+          key: sleep-interval          
+    args: ["$(INTERVAL)"]            
+   ````
+    
+    # Using a configMap volume to expose ConfigMap entries as files
+    Passing configuration options as environment variables or command-line arguments is usually used for short variable values. A ConfigMap, as you’ve seen, can also contain whole config files. When you want to expose those to the container, you can use one of the special volume types configMap volume.
+    
+    
