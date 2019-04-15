@@ -332,6 +332,55 @@ env:
    ````
     
     # Using a configMap volume to expose ConfigMap entries as files
+    
     Passing configuration options as environment variables or command-line arguments is usually used for short variable values. A ConfigMap, as you’ve seen, can also contain whole config files. When you want to expose those to the container, you can use one of the special volume types configMap volume.
+    
+    ``kubectl create configmap fortune-config --from-file=configmap-files``
+    Here, configmap-files directory contains file named 'sleep-interval' whose value is 25 and another file called my-nginx-config.conf.
+    
+    ````
+    spec:
+  containers:
+  - image: nginx:alpine
+    name: web-server
+    volumeMounts:
+    ...
+    - name: config
+      mountPath: /etc/nginx/conf.d      
+      readOnly: true
+    ...
+  volumes:
+  ...
+  - name: config
+    configMap:                          
+      name: my-config              
+    ````
+    
+    To define which entries should be exposed as files in a configMap volume, use the volume’s items attribute as shown in the following listing.
+    ````
+    volumes:
+  - name: config
+    configMap:
+      name: my-config
+      items:                             
+      - key: my-nginx-config.conf        
+        path: gzip.conf                  
+   ````     
+   
+    The directory then only contains the files from the mounted filesystem, whereas the original files in that directory are inaccessible for as long as the filesystem is mounted.
+    To add individual files from a ConfigMap into an existing directory without hiding existing files stored in it.
+    An additional 'subPath' property on the volumeMount allows you to mount either a single file or a single directory from the volume instead of mounting the whole volume. 
+  ````  
+  spec:
+  containers:
+  - image: some/image
+    volumeMounts:
+    - name: myvolume
+      mountPath: /etc/someconfig.conf    
+      subPath: myconfig.conf    
+  ````
+  
+    
+    
     
     
