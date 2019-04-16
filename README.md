@@ -378,9 +378,66 @@ env:
     - name: myvolume
       mountPath: /etc/someconfig.conf    
       subPath: myconfig.conf    
-  ````
+    ````
   
+  # Always remember to use --record flag when creating deployment
+  
+   `` kubectl create -f mydeployment.yaml --record ``
+   It records the command in revision history.
+    
+    `` kubectl rollout status deployment mydeployment ``
+    
+    `` kubectl rollout undo deployment mydeployment ``
+    
+    `` kubectl rollout undo deployment mydeployment --to-revision=2 ``
+    
+    `` kubectl rollout pause deployment mydeployment ``
+    
+    `` kubectl rollout resume deployment mydeployment ``
+    
+    ``minReadySeconds`` of Deployment is time for which pod should be ready before making it available.
     
     
-    
+ 24. Stateful sets
+ 
+   stateful vs replicas sets can be understood via pet vs cattle analogy.
+   
+   stateful set requires you to create a corresponding governing headless service that's used to provide the actual network identity to each pod. Through this service each pod gets its own DNS entry.
+   You get pods name appended with numeric index like A-0, A-1, A-2. 
+   StatefulSets scale down only one pod at a time. Also, they also never permit scale down operations if any of the instances are unhealthy. These also need to use same storage when rescheduled. Because PVC map to PV one-to-one, each pod from statefulset need to have its own PVC to have its own PV. So, you have to stamp out PVC's in similar way as pod template using volume-claim templates.
+   
+   Scaling up a StatefulSet by one creates two or more API objects (the pod and one or more PersistentVolumeClaims referenced by the pod). Scaling down, however, deletes only the pod, leaving the claims alone. The fact that the PersistentVolumeClaim remains after a scale-down means a subsequent scale-up can reattach the same claim along with the bound PersistentVolume and its contents to the new pod instance.
+   StatefulSet must be absolutely certain that a pod is no longer running before it can create a replacement pod. This has a big effect on how node failures are handled. Kubernetes must thus take great care to ensure two stateful pod instances are never running with the same identity and are bound to the same PersistentVolumeClaim. A StatefulSet must guarantee at-most-one semantics for stateful pod instances.
+   
+   The StatefulSet manifest isn’t that different from ReplicaSet or Deployment manifests you’ve created so far. What’s new is the volumeClaimTemplates list.
+   
+   ````
+       spec:
+      containers:
+      - name: mypod
+        image: nginx
+        ports:
+        - name: http
+          containerPort: 8080
+        volumeMounts:
+        - name: data                 
+          mountPath: /var/data       
+  volumeClaimTemplates:
+  - metadata:                        
+      name: data                     
+    spec:                            
+      resources:                     
+        requests:                    
+          storage: 1Mi               
+      accessModes:                   
+      - ReadWriteOnce     
+  ````    
+   
+   The second pod will be created only after the first one is up and ready. StatefulSets behave this way because certain clustered stateful apps are sensitive to race conditions if two or more cluster members come up at the same time.
+   
+   
+   
+   
+   
+   
     
