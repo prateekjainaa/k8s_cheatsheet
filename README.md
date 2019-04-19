@@ -435,7 +435,14 @@ env:
    
    The second pod will be created only after the first one is up and ready. StatefulSets behave this way because certain clustered stateful apps are sensitive to race conditions if two or more cluster members come up at the same time.
    
-   
+ ------
+ generate key and cert file for https/ssl
+ 
+ openssl genrsa -out tls.key 2048
+ openssl req -new -x509 -key tls.key -out tls.cert -days 360 -subj /CN=kubia.example.com
+ --------------
+ 
+ 
    
    
    
